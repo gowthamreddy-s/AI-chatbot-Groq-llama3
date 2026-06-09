@@ -14,8 +14,6 @@ SYSTEM_PROMPT = "You are a helpful assistant. Be concise - max 3 sentences per r
 st.title("AI Chatbot")
 st.caption("Built with Groq + Llama 3.1 — Chatbot")
 
-# st.session_state persists the messages list across reruns
-# This is Streamlit's version of our messages = [] variable
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -34,16 +32,17 @@ if user_input:
 
     st.session_state.messages.append({"role": "user", "content": user_input})
 
-    # Get AI response
-    response = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=[{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages
-    )
-
-    reply = response.choices[0].message.content
-
-    # Show AI message
+    # ── CHANGED: streaming response ──────────────────────────────
     with st.chat_message("assistant"):
-        st.write(reply)
+        stream = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages,
+            stream=True                          # ← added
+        )
+        reply = st.write_stream(                 # ← replaces st.write()
+            chunk.choices[0].delta.content or ""
+            for chunk in stream
+        )
+    # ────────────────────────────────────────────────────────────
 
     st.session_state.messages.append({"role": "assistant", "content": reply})
